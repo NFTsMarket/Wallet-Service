@@ -1,0 +1,22 @@
+{
+  "name": "wallet",
+  "version": "1.0.0",
+  "description": "Wallet Micro-Service",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NFTsMarket/Wallet-Service.git"
+  },
+  "homepage": "https://github.com/NFTsMarket/Wallet-Service",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "mongoose": "^6.0.13"
+  }
+}
