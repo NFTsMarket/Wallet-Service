@@ -6,6 +6,8 @@ const walletSchema = mongoose.Schema({
 
     fund: Number,
 
+    lastTransactions: Array,
+
     deleted: Boolean,
 
     createdAt: String,

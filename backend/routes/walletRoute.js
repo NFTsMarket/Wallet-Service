@@ -2,7 +2,7 @@ module.exports = function (app) {
     var Wallet = require('../models/walletModel.js');
     
     wallet = function (req, res) {
-        var wallet = new Wallet({user: req.body.user, fund: req.body.fund, deleted: req.body.deleted, createdAt: req.body.createdAt, updatedAt: req.body.updatedAt});
+        var wallet = new Wallet({user: req.body.user, fund: req.body.fund, lastTransactions: req.body.lastTransactions, deleted: req.body.deleted, createdAt: req.body.createdAt, updatedAt: req.body.updatedAt});
         wallet.save();
         res.end();
     };
@@ -35,6 +35,7 @@ module.exports = function (app) {
             {
                 user: req.body.user, 
                 fund: req.body.fund,
+                lastTransactions: req.body.lastTransactions,
                 deleted: req.body.deleted, 
                 createdAt: req.body.createdAt, 
                 updatedAt: req.body.updatedAt
