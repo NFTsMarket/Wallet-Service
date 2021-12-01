@@ -38,12 +38,12 @@ module.exports = function (app) {
                 deleted: req.body.deleted, 
                 createdAt: req.body.createdAt, 
                 updatedAt: req.body.updatedAt
-            }, 
+            }, {returnOriginal:false},
             function (error, wallet) {
                 if (error) {
                     res.send(error);
                 } else {
-                    res.send(wallet);
+                    return res.send('Succesfully saved.');
                 }
             }
         )
