@@ -1,9 +1,5 @@
 var express = require('express'),  
 mongoose = require('mongoose') 
-var app = express();
-var bodyParser = require('body-parser');
-app.use(bodyParser.json());
-walletRoute = require('./routes/walletRoute')(app);
 
 const connectDB = async () => {
     try {
@@ -20,7 +16,4 @@ const connectDB = async () => {
     }
 }
 
-app.listen(3000, () => {
-    connectDB();
-    console.log(`listening at http://localhost:3000`)
-})
+module.exports = connectDB;
