@@ -1,7 +1,7 @@
 const app = require('./server.js');
 const dbConnect = require('./db');
 
-var port = (3001 || 8000);
+var port = 3001;
 
 console.log("Starting API server at "+port);
 

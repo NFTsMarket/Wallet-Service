@@ -97,6 +97,37 @@ app.delete("/wallet/:id", (req, res) => {
     });
 });
 
+app.put("/wallet/:id/:fund", (req, res) => {
+    if (!req.params.fund.match(/\d+\.\d+/)) {
+        return res.status(400).json("Invalid fund format.");
+    } else {
+        Wallet.findOne(filter,function (err, wallet) {
+            if (err){
+                return res.status(500).json(err);
+            }else if(wallet){
+                try{
+                    var filter = { _id: req.params.id };
+                    Wallet.findOneAndUpdate(filter, {fund: wallet.fund + req.params.fund}, function(err, doc) {
+                        if(!doc){
+                            return res.status(400).json("A wallet with that id could not be found.");
+                        }
+                    });
+                    var wallet = await Wallet.findOne(filter);
+                    if(wallet){
+                        return res.status(200).json(wallet);
+                    }else{
+                        return res.status(404).json("A wallet with that id could not be found.");
+                    }
+                }catch(e){
+                    return res.status(500).json(e);
+                }
+            }else{
+                return res.status(404).json("A wallet with that id could not be found.");
+            }
+        });
+    }
+});
+
 module.exports = app;
 
 /*module.exports = function (app) {
