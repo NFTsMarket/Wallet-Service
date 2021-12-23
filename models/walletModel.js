@@ -4,7 +4,10 @@ const walletSchema = mongoose.Schema({
     
     user: String,
 
-    fund: Number,
+    fund: {  type: Number,
+      set: v => {
+        return new Number(v.toFixed(2));
+      }},
 
     lastTransactions: Array,
 
