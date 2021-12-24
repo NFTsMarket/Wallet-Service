@@ -1,0 +1,7 @@
+tag: dev
+
+api:
+  replicaCount: 1
+  image: okteto.dev/api
+
+walletMongoUrl: mongodb://mongo/test
