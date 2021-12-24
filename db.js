@@ -1,19 +1,17 @@
-var express = require('express'),  
-mongoose = require('mongoose') 
+const mongoose = require('mongoose');
 
-const connectDB = async () => {
-    try {
-        //database Name
-        const databaseName='wallet';
-        const con = await mongoose.connect(`mongodb://localhost:27017/${databaseName}`, { 
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-    });
-        console.log(`Database connected : ${con.connection.host}`)
-    } catch (error) {
-        console.error(`Error: ${error.message}`)
-        process.exit(1)
-    }
+var DB_URL = ('mongodb://localhost:27017/test');
+
+if(process.env.MONGO_HOSTNAME!=undefined){
+    DB_URL = ('mongodb://'+process.env.MONGO_HOSTNAME+':27017/test');
+}else{
+    DB_URL = (process.env.MONGO_URL|| 'mongodb://localhost:27017/test');
 }
 
-module.exports = connectDB;
+const dbConnect = function() {
+    const db = mongoose.connection;
+    db.on('error', console.error.bind(console, 'connection error: '));
+    return mongoose.connect(DB_URL, { useNewUrlParser: true });
+}
+
+module.exports = dbConnect;
