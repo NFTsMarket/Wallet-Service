@@ -3,14 +3,14 @@ var ObjectId = require('mongoose').Types.ObjectId;
 var bodyParser = require('body-parser');
 var Wallet = require('./models/walletModel.js')
 
-//var BASE_API_PATH = "/api/v1";
+var BASE_API_PATH = "/api/v1";
 
 var app = express();
 app.use(bodyParser.json());
 
 
 //Crear Wallet
-app.post("/wallet", async (req, res) => {
+app.post(BASE_API_PATH + "/wallet", async (req, res) => {
     try{
         var wallet = new Wallet({user: req.body.user, fund: req.body.fund, lastTransactions: req.body.lastTransactions, deleted: req.body.deleted, createdAt: req.body.createdAt, updatedAt: req.body.updatedAt});
         await wallet.save();
@@ -23,7 +23,7 @@ app.post("/wallet", async (req, res) => {
 );
 
 //Listar Wallets
-app.get("/wallet", (req, res) => {
+app.get(BASE_API_PATH + "/wallet", (req, res) => {
     let limitatt = (req.query["limit"] != null && !Number.isNaN(req.query["limit"]) ) ? req.query["limit"] : 0;
     let offset = (req.query["offset"] != null && !Number.isNaN(req.query["offset"]) ) ? req.query["offset"] : 0;
     let sortatt = (req.query["sort"] != null) ? req.query["sort"] : null;
@@ -42,7 +42,7 @@ app.get("/wallet", (req, res) => {
 });
 
 // Modificar Wallet
-app.put("/wallet/:id", async (req, res) => {
+app.put(BASE_API_PATH + "/wallet/:id", async (req, res) => {
     try{
         var filter = { _id: req.params.id };
         Wallet.findOneAndUpdate(filter, req.body, function(err, doc) {
@@ -62,7 +62,7 @@ app.put("/wallet/:id", async (req, res) => {
 });
 
 //Obtener un Wallet
-app.get("/wallet/:id", (req, res) => {
+app.get(BASE_API_PATH + "/wallet/:id", (req, res) => {
     if(!ObjectId.isValid(req.params.id)){
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
@@ -80,7 +80,7 @@ app.get("/wallet/:id", (req, res) => {
 });
 
 // Borrar Wallet
-app.delete("/wallet/:id", (req, res) => {
+app.delete(BASE_API_PATH + "/wallet/:id", (req, res) => {
     if(!ObjectId.isValid(req.params.id)){
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
@@ -97,7 +97,7 @@ app.delete("/wallet/:id", (req, res) => {
     });
 });
 
-app.put("/wallet/:id/:fund", (req, res) => {
+app.put(BASE_API_PATH + "/wallet/:id/:fund", (req, res) => {
     if (!req.params.fund.match(/\d+\.\d+/)) {
         return res.status(400).json("Invalid fund format.");
     } else {
@@ -126,6 +126,10 @@ app.put("/wallet/:id/:fund", (req, res) => {
             }
         });
     }
+});
+
+app.get(BASE_API_PATH + "/healthz", (req, res) => {
+    res.sendStatus(200);
 });
 
 module.exports = app;
