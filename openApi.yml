@@ -80,9 +80,112 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/internalServerError"
-        
-          
-          
+    put:
+      description: Update a single wallet.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            $ref: "#/components/schemas/walletId"
+          required: true
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/wallet"
+        400:
+          description: A wallet with that id could not be found, since it's not a valid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/badParameter"
+        404:
+          description: A wallet with that id could not be found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/notFound"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/internalServerError"
+    delete:
+      description: Delete a single wallet.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            $ref: "#/components/schemas/walletId"
+          required: true
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/wallet"
+        400:
+          description: A wallet with that id could not be found, since it's not a valid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/badParameter"
+        404:
+          description: A wallet with that id could not be found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/notFound"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/internalServerError"
+  
+  /wallet/{id}/{fund}:
+    put:
+      description: Delete a single wallet.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            $ref: "#/components/schemas/walletId"
+          required: true
+        - in: path
+          name: fund
+          schema:
+            $ref: "#/components/schemas/walletFund"
+          required: true
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/wallet"
+        400:
+          description: A wallet with that id could not be found, since it's not a valid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/badParameter"
+        404:
+          description: A wallet with that id could not be found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/notFound"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/internalServerError"
           
 components:
         
@@ -90,6 +193,9 @@ components:
     walletId:
       type: string
       description: Wallet's ID
+    walletFund:
+      type: number
+      description: Current wallet's funds
     notFound:
       type: string
       description: Object not found
