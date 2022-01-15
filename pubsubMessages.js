@@ -1,37 +1,37 @@
-const { response } = require("express");
-const { publishPubSubMessage } = require("./pubsub");
+const  { createSubscription, publishPubSubMessage, createTopic } = require("./pubsub");
 
-createTopic('created-wallet')
-createTopic('updated-wallet')
-createTopic('deleted-wallet')
+/*createTopic('created-wallet');
+createTopic('updated-wallet');
+createTopic('deleted-wallet');
 
-const sendMessageCreatedWallet = async (req, res = response) => {
+createSubscription('created-user', 'wallet');
+createSubscription('deleted-user', 'wallet');
+createSubscription('created-purchase', 'wallet');*/
+
+const sendMessageCreatedWallet = async (data) => {
     try {
-        await publishPubSubMessage("created-wallet", req);
+        await publishPubSubMessage("created-wallet", data);
 
     } catch (e) {
         console.log(e);
-        res.status(500).send(e);
     }
 };
 
-const sendMessageUpdatedWallet = async (req, res = response) => {
+const sendMessageUpdatedWallet = async (data) => {
     try {
-        await publishPubSubMessage("updated-wallet", req);
+        await publishPubSubMessage("updated-wallet", data);
 
     } catch (e) {
         console.log(e);
-        res.status(500).send(e);
     }
 };
 
-const sendMessageDeletedWallet = async (req, res = response) => {
+const sendMessageDeletedWallet = async (data) => {
     try {
-        await publishPubSubMessage("deleted-wallet", req);
+        await publishPubSubMessage("deleted-wallet", data);
 
     } catch (e) {
         console.log(e);
-        res.status(500).send(e);
     }
 };
 
