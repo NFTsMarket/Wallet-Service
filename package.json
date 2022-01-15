@@ -1,7 +1,26 @@
 {
+  "name": "walletapi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NFTsMarket/Wallet-Service.git"
+  },
+  "homepage": "https://github.com/NFTsMarket/Wallet-Service",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\""
+  },
+  "author": "",
+  "license": "ISC",
   "dependencies": {
+    "@google-cloud/pubsub": "^2.18.4",
     "body-parser": "^1.19.1",
+    "dotenv": "^11.0.0",
     "express": "^4.17.2",
+    "jsonwebtoken": "^8.5.1",
+    "mongodb": "^4.2.0",
     "mongoose": "^6.1.2"
   }
 }

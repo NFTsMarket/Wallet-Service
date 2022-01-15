@@ -1,0 +1,158 @@
+openapi: 3.0.2
+info:
+  version: '1.0'
+  title: Wallet Service
+  description: Wallet management microservice.
+servers:
+  - url: https://api-fis-wallet-d-rhym.cloud.okteto.net/api/v1
+    description: Wallet microservice server
+paths: 
+  
+  /wallet:
+    get:
+      description: Returns a list with all the wallets in the database.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/wallets"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/wallets"
+                
+    post:
+      description: Returns a list with all the wallets in the database.
+      requestBody:
+        required: true
+        content: 
+          application/json:
+            schema:
+              $ref: "#/components/schemas/wallet"
+      responses:
+        201:
+          description: Successful request and wallet created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/wallet"
+        400:
+          description: Could not create a wallet.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/notCreate"
+  /wallet/{id}:
+    get:
+      description: Returns a single wallet.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            $ref: "#/components/schemas/walletId"
+          required: true
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/wallet"
+        400:
+          description: A wallet with that id could not be found, since it's not a valid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/badParameter"
+        404:
+          description: A wallet with that id could not be found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/notFound"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/internalServerError"
+        
+          
+          
+          
+components:
+        
+  schemas:
+    walletId:
+      type: string
+      description: Wallet's ID
+    notFound:
+      type: string
+      description: Object not found
+    badParameter:
+      type: string
+      description: Invalid parameter
+    notCreate:
+      type: string
+      description: Could not create
+    internalServerError:
+      type: string
+      description: There was an error in the server
+    wallet:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Wallet's ID
+        fund:
+          type: number
+          description: Current wallet's funds
+        lastTransactions:
+          type: array
+          items:
+            type: number
+            description: Last movements of wallet's fund
+        deleted:
+          type: boolean
+          description: Current wallet's user status
+        createdAt:
+          type: string
+          description: Creation date
+        updatedAt:
+          type: string
+          description: Last updated date
+        __v:
+          type: number
+          description: Wallet's version      
+    wallets:
+      type: array
+      items:
+        type: object
+        properties:
+          _id:
+            type: string
+            description: Wallet's ID
+          fund:
+            type: number
+            description: Current wallet's funds
+          lastTransactions:
+            type: array
+            items:
+              type: number
+              description: Last movements of wallet's fund
+          deleted:
+            type: boolean
+            description: Current wallet's user status
+          createdAt:
+            type: string
+            description: Creation date
+          updatedAt:
+            type: string
+            description: Last updated date
+          __v:
+            type: number
+            description: Wallet's version
