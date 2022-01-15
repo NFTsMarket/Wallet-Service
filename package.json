@@ -10,7 +10,7 @@
   "homepage": "https://github.com/NFTsMarket/Wallet-Service",
   "scripts": {
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\""
+    "test": "jest"
   },
   "author": "",
   "license": "ISC",
@@ -22,5 +22,10 @@
     "jsonwebtoken": "^8.5.1",
     "mongodb": "^4.2.0",
     "mongoose": "^6.1.2"
+  },
+  "devDependencies": {
+    "jest": "^27.4.7",
+    "jest-extended": "^1.2.0",
+    "supertest": "^6.2.1"
   }
 }
