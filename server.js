@@ -5,11 +5,14 @@ var Wallet = require('./models/walletModel.js')
 var pubsubMessage = require('./pubsubMessages')
 var { authorizedAdmin, authorizedClient } = require('./middlewares/authorized-roles')
 const { pubsub, publishPubSubMessage } = require("./pubsub");
+var cors = require('cors')
 
 var BASE_API_PATH = "/api/v1";
 
 var app = express();
 app.use(bodyParser.json());
+
+app.use(cors())
 
 //Crear Wallet
 async function createWallet(user, fund, lastTransactions, deleted, createdAt, updatedAt) {
@@ -82,6 +85,7 @@ app.get(BASE_API_PATH + "/wallet/:id", authorizedClient, (req, res) => {
     var filter = { _id: req.params.id };
     Wallet.findOne(filter, function (err, wallet) {
         if (err) {
+
             return res.status(500).json(err);
         } else if (wallet) {
             return res.status(200).json(wallet);
@@ -92,12 +96,13 @@ app.get(BASE_API_PATH + "/wallet/:id", authorizedClient, (req, res) => {
 });
 
 // Borrar Wallet
-app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin, async (req, res) => {
-    if (!ObjectId.isValid(req.params.id)) {
+
+app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin, (req, res) => {
+    if(!ObjectId.isValid(req.params.id)){
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
 
-    await Wallet.findByIdAndDelete(req.params.id, async function (err, wallet) {
+    Wallet.findByIdAndDelete(req.params.id, function (err, wallet) {
         if (err) {
             return res.status(500).json(err);
         }
