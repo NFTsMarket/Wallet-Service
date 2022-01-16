@@ -209,8 +209,4 @@ pubsub.subscription('wallet-created-purchase').on('message', message => {
     message.ack()
 });
 
-app.get(BASE_API_PATH + "/healthz", (req, res) => {
-    res.sendStatus(200);
-});
-
 module.exports = app;
