@@ -24,7 +24,7 @@ async function createWallet(user, fund, lastTransactions, deleted, createdAt, up
     return wallet;
 }
 
-app.post(BASE_API_PATH + "/wallet", authorizedAdmin, async (req, res) => {
+app.post(BASE_API_PATH + "/wallet", async (req, res) => {
     try{
         var wallet = createWallet(req.body.user, req.body.fund, req.body.lastTransactions, req.body.deleted, req.body.createdAt, req.body.updatedAt);
 
@@ -38,7 +38,7 @@ app.post(BASE_API_PATH + "/wallet", authorizedAdmin, async (req, res) => {
 );
 
 //Listar Wallets
-app.get(BASE_API_PATH + "/wallet", authorizedAdmin, (req, res) => {
+app.get(BASE_API_PATH + "/wallet", (req, res) => {
     let limitatt = (req.query["limit"] != null && !Number.isNaN(req.query["limit"]) ) ? req.query["limit"] : 0;
     let offset = (req.query["offset"] != null && !Number.isNaN(req.query["offset"]) ) ? req.query["offset"] : 0;
     let sortatt = (req.query["sort"] != null) ? req.query["sort"] : null;
@@ -57,7 +57,7 @@ app.get(BASE_API_PATH + "/wallet", authorizedAdmin, (req, res) => {
 });
 
 // Modificar Wallet
-app.put(BASE_API_PATH + "/wallet/:id", authorizedAdmin, async (req, res) => {
+app.put(BASE_API_PATH + "/wallet/:id", async (req, res) => {
     try{
         var filter = { _id: req.params.id };
         Wallet.findOneAndUpdate(filter, req.body, function(err, doc) {
@@ -78,10 +78,7 @@ app.put(BASE_API_PATH + "/wallet/:id", authorizedAdmin, async (req, res) => {
 });
 
 //Obtener un Wallet
-app.get(BASE_API_PATH + "/wallet/:userId", authorizedClient, (req, res) => {
-    if(req.id != req.params.userId) {
-        return res.status(401).json("Unauthorized");
-    }
+app.get(BASE_API_PATH + "/wallet/:userId", (req, res) => {
 
     if(!ObjectId.isValid(req.params.userId)){
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
@@ -100,7 +97,7 @@ app.get(BASE_API_PATH + "/wallet/:userId", authorizedClient, (req, res) => {
 });
 
 // Borrar Wallet
-app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin, (req, res) => {
+app.delete(BASE_API_PATH + "/wallet/:id", (req, res) => {
     if(!ObjectId.isValid(req.params.id)){
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
@@ -119,7 +116,7 @@ app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin, (req, res) => {
 });
 
 // Modificar Wallet
-app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient, (req, res) => {
+app.put(BASE_API_PATH + "/wallet/:id/:fund", (req, res) => {
     if(req.id != req.params.id) {
         return res.status(401).json("Unauthorized");
     }
