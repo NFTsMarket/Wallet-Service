@@ -5,11 +5,14 @@ var Wallet = require('./models/walletModel.js')
 var { sendMessageCreatedWallet, sendMessageUpdatedWallet, sendMessageDeletedWallet } = require('./pubsubMessages')
 var { authorizedAdmin, authorizedClient } = require('./middlewares/authorized-roles')
 const { pubsub } = require("./pubsub");
+var cors = require('cors')
 
 var BASE_API_PATH = "/api/v1";
 
 var app = express();
 app.use(bodyParser.json());
+
+app.use(cors())
 
 //Crear Wallet
 async function createWallet(user, fund, lastTransactions, deleted, createdAt, updatedAt) {
@@ -75,12 +78,16 @@ app.put(BASE_API_PATH + "/wallet/:id", authorizedAdmin, async (req, res) => {
 });
 
 //Obtener un Wallet
-app.get(BASE_API_PATH + "/wallet/:id", authorizedClient,(req, res) => {
-    if(!ObjectId.isValid(req.params.id)){
+app.get(BASE_API_PATH + "/wallet/:userId", authorizedClient, (req, res) => {
+    if(req.id != req.params.userId) {
+        return res.status(400).json("Unauthorized");
+    }
+
+    if(!ObjectId.isValid(req.params.userId)){
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
 
-    var filter = { _id: req.params.id };
+    var filter = { user: req.params.userId };
     Wallet.findOne(filter,function (err, wallet) {
         if (err){
             return res.status(500).json(err);
@@ -93,7 +100,7 @@ app.get(BASE_API_PATH + "/wallet/:id", authorizedClient,(req, res) => {
 });
 
 // Borrar Wallet
-app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin,(req, res) => {
+app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin, (req, res) => {
     if(!ObjectId.isValid(req.params.id)){
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
@@ -112,7 +119,11 @@ app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin,(req, res) => {
 });
 
 // Modificar Wallet
-app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient,(req, res) => {
+app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient, (req, res) => {
+    if(req.id != req.params.id) {
+        return res.status(400).json("Unauthorized");
+    }
+
     if (!req.params.fund.match(/\d+\.\d+/)) {
         return res.status(400).json("Invalid fund format.");
     } else {
@@ -145,13 +156,14 @@ app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient,(req, res) => {
 });
 
 function addAmountToUserWallet(userId, amount) {
+    console.log("USER ID", userId);
     var filter = { user: userId };
     Wallet.findOne(filter, async function (err, wallet) {
         if (err){
             console.log("DB error.");
         }else if(wallet){
             try{
-                Wallet.findOneAndUpdate(filter, {fund: wallet.fund + amount}, function(err, doc) {
+                Wallet.findOneAndUpdate(filter, {fund: wallet.fund + amount, lastTransactions: [amount, ...wallet.lastTransactions]}, function(err, doc) {
                     if(!doc){
                         console.log("A wallet with that id could not be found.");
                     }
@@ -174,13 +186,21 @@ function addAmountToUserWallet(userId, amount) {
 
 // Pub/Sub, mensaje = una publicacion con datos, pero sin topic
 
-pubsub.subscription('wallet-created-user').on('message', message => {
-    createWallet(message.id, 0, [], false, new Date().toISOString(), new Date().toISOString())
+// Para probarlo:
+// Crear un usuario y comprobar que se le crea una wallet
+pubsub.subscription('wallet2-created-user').on('message', message => {
+    const user = JSON.parse(message.data.toString());
+    console.log("MENSAJE" ,user);
+    createWallet(user.id, 0, [], false, new Date().toISOString(), new Date().toISOString())
     message.ack()
 });
 
-pubsub.subscription('wallet-deleted-user').on('message', message => {
-    Wallet.findOneAndDelete({ user: message.id }, function (err, wallet) {
+// Para probarlo:
+// Borrar un usuario y comprobar que se le borra la wallet
+pubsub.subscription('wallet2-deleted-user').on('message', message => {
+    const user = JSON.parse(message.data.toString());
+    console.log("MENSAJE DELETE" ,user);
+    Wallet.findOneAndDelete({ user: user.id }, function (err, wallet) {
         if(wallet){
             sendMessageDeletedWallet(wallet);
         }
@@ -189,12 +209,30 @@ pubsub.subscription('wallet-deleted-user').on('message', message => {
     message.ack()
 });
 
+
+// Para probarlo:
+// Realizar una compra y comprobar que le suma a una cartera la cantidad y a la otra se le resta y que se añade la transacción a la lista
 pubsub.subscription('wallet-created-purchase').on('message', message => {
-    let buyerId = message.buyerId;
-    let sellerId = message.sellerId;
-    let cost = message.amount;
-    addAmountToUserWallet(sellerId, cost);
+    const user = JSON.parse(message.data.toString());
+    let buyerId = user.buyerId;
+    let cost = user.amount;
     addAmountToUserWallet(buyerId, -cost);
+    message.ack()
+});
+
+pubsub.subscription('wallet-updated-purchase').on('message', message => {
+    const user = JSON.parse(message.data.toString());
+    let sellerId = user.sellerId;
+    let cost = user.amount;
+    addAmountToUserWallet(sellerId, cost);
+    message.ack()
+});
+
+pubsub.subscription('wallet-deleted-purchase').on('message', message => {
+    const user = JSON.parse(message.data.toString());
+    let buyerId = user.buyerId;
+    let cost = user.amount;
+    addAmountToUserWallet(buyerId, cost);
     message.ack()
 });
 
