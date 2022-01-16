@@ -80,7 +80,7 @@ app.put(BASE_API_PATH + "/wallet/:id", authorizedAdmin, async (req, res) => {
 //Obtener un Wallet
 app.get(BASE_API_PATH + "/wallet/:userId", authorizedClient, (req, res) => {
     if(req.id != req.params.userId) {
-        return res.status(400).json("Unauthorized");
+        return res.status(401).json("Unauthorized");
     }
 
     if(!ObjectId.isValid(req.params.userId)){
@@ -121,7 +121,7 @@ app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin, (req, res) => {
 // Modificar Wallet
 app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient, (req, res) => {
     if(req.id != req.params.id) {
-        return res.status(400).json("Unauthorized");
+        return res.status(401).json("Unauthorized");
     }
 
     if (!req.params.fund.match(/\d+\.\d+/)) {
