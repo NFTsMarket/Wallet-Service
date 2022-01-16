@@ -2,9 +2,9 @@ var express = require('express');
 var ObjectId = require('mongoose').Types.ObjectId;
 var bodyParser = require('body-parser');
 var Wallet = require('./models/walletModel.js')
-var { sendMessageCreatedWallet, sendMessageUpdatedWallet, sendMessageDeletedWallet } = require('./pubsubMessages')
+var pubsubMessage = require('./pubsubMessages')
 var { authorizedAdmin, authorizedClient } = require('./middlewares/authorized-roles')
-const { pubsub } = require("./pubsub");
+const { pubsub, publishPubSubMessage } = require("./pubsub");
 
 var BASE_API_PATH = "/api/v1";
 
@@ -16,7 +16,7 @@ async function createWallet(user, fund, lastTransactions, deleted, createdAt, up
     var wallet = new Wallet({ user: user, fund: fund, lastTransactions: lastTransactions, deleted: deleted, createdAt: createdAt, updatedAt: updatedAt });
     await wallet.save();
 
-    sendMessageCreatedWallet(wallet);
+    pubsubMessage.sendMessageCreatedWallet(wallet);
 
     return wallet;
 }
@@ -55,27 +55,26 @@ app.get(BASE_API_PATH + "/wallet", authorizedAdmin, (req, res) => {
 
 // Modificar Wallet
 app.put(BASE_API_PATH + "/wallet/:id", authorizedAdmin, async (req, res) => {
-    try {
-        var filter = { _id: req.params.id };
-        Wallet.findOneAndUpdate(filter, req.body, function (err, doc) {
-            if (!doc) {
-                return res.status(400).json("A wallet with that id could not be found.");
-            }
-        });
-        var wallet = await Wallet.findOne(filter);
-        if (wallet) {
-            sendMessageUpdatedWallet(wallet);
-            return res.status(200).json(wallet);
-        } else {
+    if (!ObjectId.isValid(req.params.id)) {
+        return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
+    }
+    var filter = { _id: req.params.id };
+    Wallet.findOneAndUpdate(filter, req.body, function (err, doc) {
+        if (!doc) {
             return res.status(404).json("A wallet with that id could not be found.");
         }
-    } catch (e) {
-        return res.status(500).json(e);
+    });
+    var wallet = await Wallet.findOne(filter);
+    if (wallet) {
+        pubsubMessage.sendMessageUpdatedWallet(wallet);
+        return res.status(200).json(wallet);
+    } else {
+        return res.status(404).json("A wallet with that id could not be found.");
     }
 });
 
 //Obtener un Wallet
-app.get(BASE_API_PATH + "/wallet/:id", authorizedClient, (req, res) => {
+app.get(BASE_API_PATH + "/wallet/:id", authorizedClient, (req, res) => {   
     if (!ObjectId.isValid(req.params.id)) {
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
@@ -93,17 +92,17 @@ app.get(BASE_API_PATH + "/wallet/:id", authorizedClient, (req, res) => {
 });
 
 // Borrar Wallet
-app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin, (req, res) => {
+app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin, async (req, res) => {
     if (!ObjectId.isValid(req.params.id)) {
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
 
-    Wallet.findByIdAndDelete(req.params.id, function (err, wallet) {
+    await Wallet.findByIdAndDelete(req.params.id, async function (err, wallet) {
         if (err) {
             return res.status(500).json(err);
         }
         else if (wallet) {
-            sendMessageDeletedWallet(wallet);
+            pubsubMessage.sendMessageDeletedWallet(wallet);
             return res.status(200).json();
         } else {
             return res.status(404).json("A wallet with that id could not be found.");
@@ -129,7 +128,7 @@ app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient, (req, res) => {
                     });
                     var wallet = await Wallet.findOne(filter);
                     if (wallet) {
-                        sendMessageUpdatedWallet(wallet);
+                        pubsubMessage.sendMessageUpdatedWallet(wallet);
                         return res.status(200).json(wallet);
                     } else {
                         return res.status(404).json("A wallet with that id could not be found.");
@@ -152,14 +151,14 @@ function addAmountToUserWallet(userId, amount) {
         } else if (wallet) {
             try {
                 var today = new Date().toLocaleDateString();
-                Wallet.findOneAndUpdate(filter, { fund: wallet.fund + amount, updatedAt: today}, function (err, doc) {
+                Wallet.findOneAndUpdate(filter, { fund: wallet.fund + amount, updatedAt: today }, function (err, doc) {
                     if (!doc) {
                         console.log("A wallet with that id could not be found.");
                     }
                 });
                 var wallet = await Wallet.findOne(filter);
                 if (wallet) {
-                    sendMessageUpdatedWallet(wallet);
+                    pubsubMessage.sendMessageUpdatedWallet(wallet);
                 } else {
                     console.log("A wallet with that id could not be found.");
                 }
@@ -184,7 +183,7 @@ pubsub.subscription('wallet-created-user').on('message', message => {
 pubsub.subscription('wallet-deleted-user').on('message', message => {
     Wallet.findOneAndDelete({ user: message.id }, function (err, wallet) {
         if (wallet) {
-            sendMessageDeletedWallet(wallet);
+            pubsubMessage.sendMessageDeletedWallet(wallet);
         }
     });
 

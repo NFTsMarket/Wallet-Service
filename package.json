@@ -10,7 +10,7 @@
   "homepage": "https://github.com/NFTsMarket/Wallet-Service",
   "scripts": {
     "start": "node index.js",
-    "test": "jest"
+    "test": "jest --runInBand --forceExit"
   },
   "author": "",
   "license": "ISC",

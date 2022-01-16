@@ -4,6 +4,8 @@ const request = require("supertest");
 const authorizeToken = require("../middlewares/authorized-roles");
 const jwt = require("jsonwebtoken");
 var ObjectId = require('mongoose').Types.ObjectId;
+const { pubsub, publishPubSubMessage } = require("../pubsub");
+var pubsubMessage = require('../pubsubMessages');
 
 const dotenv = require('dotenv');
 dotenv.config();
@@ -12,11 +14,10 @@ describe("Wallet service API", () => {
     let adminToken;
     let clientToken;
     beforeAll(() => {
-        process.env.SECRET_KEY = "secret_key";
-        adminToken = jwt.sign({ "id": "a", "email": "david@gmail.com", "role": "admin" }, process.env.SECRET_KEY);
-        clientToken = jwt.sign({ "id": "b", "email": "david2@gmail.com", "role": "client" }, process.env.SECRET_KEY);
+        process.env["SECRET_KEY"] = 'secret_key';
+        adminToken = jwt.sign({ "id": "61c5c8475a8d4de2b1939301", "email": "david@gmail.com", "role": "admin" }, process.env.SECRET_KEY);
+        clientToken = jwt.sign({ "id": "61c5c8475a8d4de2b1939301", "email": "david2@gmail.com", "role": "client" }, process.env.SECRET_KEY);
     })
-
 
     describe("GET /wallet", () => {
         var dbFind;
@@ -50,6 +51,7 @@ describe("Wallet service API", () => {
         })
     })
 
+    
     describe("GET /wallet/:id", () => {
 
         var dbFind;
@@ -71,7 +73,7 @@ describe("Wallet service API", () => {
             dbFind.mockImplementation((query, callback) => {
                 callback(null, wallet)
             });
-            return request(app).get("/api/v1/wallet/61c5c8475a8d4de2b1939301").set("Authorization", `Bearer ` + clientToken).then((response) => {
+            return request(app).get("/api/v1/wallet/joe").set("Authorization", `Bearer ` + clientToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body._doc.user).toEqual("joe");
             })
@@ -138,26 +140,361 @@ describe("Wallet service API", () => {
             });
         })
     })
+    
     describe("PUT /wallet/:id", () => {
         var wallet;
         var dbInsert;
         var validId;
         var dbFind;
+        let pubsubPublishMessage;
         beforeEach(() => {
-            wallet = { _doc: { _id: "61c5c8475a8d4de2b1939301", user: "joe", fund: 12.63, lastTransactions: [], deleted: false, createdAt: "06/23/2021", updatedAt: "07/23/2021" } };
-            updatedWallet = {_doc: { _id: "61c5c8475a8d4de2b1939301", user: "gideon", fund: 12.63, lastTransactions: [], deleted: false, createdAt: "06/23/2021", updatedAt: "07/23/2021" } };
+            wallet = { _id: "61c5c8475a8d4de2b1939301", user: "joe", fund: 12.63, lastTransactions: [], deleted: false, createdAt: "06/23/2021", updatedAt: "07/23/2021" };
             validId = jest.spyOn(ObjectId, "isValid");
             dbFind = jest.spyOn(Wallet, "findOne");
-            dbUpdate = jest.spyOn(Wallet, "findOneAndUpdate");
-    })
-    it('Should add a new wallet if everything is fine', () => {
-        dbUpdate.mockImplementation((f, update, v, callback) => {
-            callback(null, true);
-          });
 
-        return request(app).put('/api/v1/wallet/61c5c8475a8d4de2b1939301').set("Authorization", `Bearer ` + adminToken).send(updatedWallet).then((response) => {
-            expect(response.statusCode).toBe(200);
+            dbFindOneAndUpdate = jest.spyOn(Wallet, "findOneAndUpdate");
+            dbFind = jest.spyOn(Wallet, "findOne");
+
+
+            pubsubPublishMessage = jest.spyOn(pubsubMessage, 'sendMessageUpdatedWallet');
+            pubsubPublishMessage.mockImplementation((message) => { Promise.resolve(); });
+
+        })
+
+        afterEach(() => {
+            pubsubPublishMessage.mockClear();
+            dbFind.mockReset();
         });
+        it('Should update a wallet if everything is fine', () => {
+            var updatedWallet = {
+                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.63, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
+            };
+
+            validId.mockImplementation(() => {
+                return true
+            });
+
+            dbFind.mockImplementation(() => {
+                return updatedWallet;
+            });
+
+            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
+                return (null, updatedWallet);
+            });
+
+            return request(app).put("/api/v1/wallet/61c5c8475a8d4de2b1939301").set("Authorization", `Bearer ` + adminToken).send(wallet)
+                .then((response) => {
+                    expect(response.statusCode).toBe(200);
+                });
+
+
+        })
+        it('Should return 400 invalid id', () => {
+            var updatedWallet = {
+                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.63, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
+            };
+
+            validId.mockImplementation(() => {
+                return false
+            });
+            
+            dbFind.mockImplementation(() => {
+                return updatedWallet;
+            });
+
+            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
+                callback(null, null);
+            });
+
+            return request(app).put("/api/v1/wallet/a").set("Authorization", `Bearer ` + adminToken).send(wallet)
+                .then((response) => {
+                    expect(response.statusCode).toBe(400);
+                });
+
+
+        })
+        it('Should return 404 wallet not found', () => {
+            var updatedWallet = {
+                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.63, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
+            };
+
+            validId.mockImplementation(() => {
+                return true
+            });
+            
+            dbFind.mockImplementation(() => {
+                return null;
+            });
+
+            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
+                callback(null, updatedWallet);
+            });
+
+            return request(app).put("/api/v1/wallet/a").set("Authorization", `Bearer ` + adminToken).send(wallet)
+                .then((response) => {
+                    expect(response.statusCode).toBe(404);
+                });
+        })
     })
-})
+
+    describe("PUT /wallet/:id", () => {
+        let wallet;
+        let dbInsert;
+        let validId;
+        let dbFind;
+        let pubsubPublishMessage;
+        beforeEach(() => {
+            wallet = { _id: "61c5c8475a8d4de2b1939301", user: "joe", fund: 12.63, lastTransactions: [], deleted: false, createdAt: "06/23/2021", updatedAt: "07/23/2021" };
+            validId = jest.spyOn(ObjectId, "isValid");
+            dbFind = jest.spyOn(Wallet, "findOne");
+
+            dbFindOneAndUpdate = jest.spyOn(Wallet, "findOneAndUpdate");
+            dbFind = jest.spyOn(Wallet, "findOne");
+
+
+            pubsubPublishMessage = jest.spyOn(pubsubMessage, 'sendMessageUpdatedWallet');
+            pubsubPublishMessage.mockImplementation((message) => { Promise.resolve(); });
+
+        })
+
+        afterEach(() => {
+            pubsubPublishMessage.mockClear();
+            dbFind.mockReset();
+        });
+        it('Should update a wallet if everything is fine', () => {
+            var updatedWallet = {
+                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.63, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
+            };
+
+            validId.mockImplementation(() => {
+                return true
+            });
+
+            dbFind.mockImplementation(() => {
+                return updatedWallet;
+            });
+
+            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
+                return (null, updatedWallet);
+            });
+
+            return request(app).put("/api/v1/wallet/61c5c8475a8d4de2b1939301").set("Authorization", `Bearer ` + adminToken).send(wallet)
+                .then((response) => {
+                    expect(response.statusCode).toBe(200);
+                });
+
+
+        })
+        it('Should return 400 invalid id', () => {
+            var updatedWallet = {
+                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.63, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
+            };
+
+            validId.mockImplementation(() => {
+                return false
+            });
+            
+            dbFind.mockImplementation(() => {
+                return updatedWallet;
+            });
+
+            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
+                callback(null, null);
+            });
+
+            return request(app).put("/api/v1/wallet/a").set("Authorization", `Bearer ` + adminToken).send(wallet)
+                .then((response) => {
+                    expect(response.statusCode).toBe(400);
+                });
+
+
+        })
+        it('Should return 404 wallet not found', () => {
+            var updatedWallet = {
+                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.63, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
+            };
+
+            validId.mockImplementation(() => {
+                return true
+            });
+            
+            dbFind.mockImplementation(() => {
+                return null;
+            });
+
+            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
+                callback(null, updatedWallet);
+            });
+
+            return request(app).put("/api/v1/wallet/a").set("Authorization", `Bearer ` + adminToken).send(wallet)
+                .then((response) => {
+                    expect(response.statusCode).toBe(404);
+                });
+        })
+        it('Should return 403 Forbidden', () => {
+            var updatedWallet = {
+                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.63, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
+            };
+
+            validId.mockImplementation(() => {
+                return true
+            });
+            
+            dbFind.mockImplementation(() => {
+                return null;
+            });
+
+            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
+                callback(null, updatedWallet);
+            });
+
+            return request(app).put("/api/v1/wallet/a").set("Authorization", `Bearer ` + clientToken).send(wallet)
+                .then((response) => {
+                    expect(response.statusCode).toBe(403);
+                });
+        })
+    })
+
+    describe("DELETE /wallet/:id", () => {
+        let wallet;
+        let validId;
+        let dbDelete;
+        let pubsubPublishMessage;
+        beforeEach(() => {
+            wallet = { _id: "61c5c8475a8d4de2b1939301", user: "joe", fund: 12.63, lastTransactions: [], deleted: false, createdAt: "06/23/2021", updatedAt: "07/23/2021" };
+            validId = jest.spyOn(ObjectId, "isValid");
+            dbDelete = jest.spyOn(Wallet, "findByIdAndDelete");
+
+            pubsubPublishMessage = jest.spyOn(pubsubMessage, 'sendMessageDeletedWallet');
+            pubsubPublishMessage.mockImplementation((message) => { Promise.resolve(); });
+        })
+        afterEach(() => {
+            pubsubPublishMessage.mockClear();
+        });
+        it('Should return 403 Forbidden', () => {
+            validId.mockImplementation(() => {
+                return true
+            });
+
+            dbDelete.mockImplementation((query, callback) => {
+                return (null, true);
+            });
+
+            return request(app).delete("/api/v1/wallet/61c5c8475a8d4de2b1939301").set("Authorization", `Bearer ` + clientToken)
+                .then((response) => {
+                    expect(response.statusCode).toBe(403);
+                });
+        })
+        
+        it('Should delete a wallet if everything is fine', () => {
+            validId.mockImplementation(() => {
+                return true
+            });
+
+            dbDelete.mockImplementation((query, callback) => {
+                return (null, true);
+            });
+
+            return request(app).delete("/api/v1/wallet/61c5c8475a8d4de2b1939301").set("Authorization", `Bearer ` + clientToken)
+                .then((response) => {
+                    expect(response.statusCode).toBe(403);
+                });
+        })
+        it('Should return 400 invalid id', () => {
+            validId.mockImplementation(() => {
+                return false
+            });
+            
+
+            return request(app).delete("/api/v1/wallet/61c5c8475a8d4de2b1939301").set("Authorization", `Bearer ` + adminToken)
+                .then((response) => {
+                    expect(response.statusCode).toBe(400);
+                });
+
+
+        })
+        it('Should return 404 wallet not found', () => {
+            validId.mockImplementation(() => {
+                return true
+            });
+            
+            return request(app).put("/api/v1/wallet/a").set("Authorization", `Bearer ` + adminToken)
+                .then((response) => {
+                    expect(response.statusCode).toBe(404);
+                });
+        })
+    })
+    /*describe("PUT /wallet/:id/:fund", () => {
+        var wallet;
+        var dbInsert;
+        var validId;
+        var dbFind;
+        let pubsubPublishMessage;
+        beforeEach(() => {
+            wallet = { _id: "61c5c8475a8d4de2b1939301", user: "joe", fund: 15.64, lastTransactions: [], deleted: false, createdAt: "06/23/2021", updatedAt: "07/23/2021" };
+            validId = jest.spyOn(ObjectId, "isValid");
+            dbFind = jest.spyOn(Wallet, "findOne");
+
+            dbFindOneAndUpdate = jest.spyOn(Wallet, "findOneAndUpdate");
+            dbFind = jest.spyOn(Wallet, "findOne");
+
+            validId = jest.spyOn(ObjectId, "isValid");
+
+            pubsubPublishMessage = jest.spyOn(pubsubMessage, 'sendMessageUpdatedWallet');
+            pubsubPublishMessage.mockImplementation((message) => { Promise.resolve(); });
+
+        })
+
+        afterEach(() => {
+            pubsubPublishMessage.mockClear();
+            dbFind.mockReset();
+            dbFindOneAndUpdate.mockReset();
+        });
+
+        it('Should return 400 inavlid format', () => {
+            var updatedWallet = {
+                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.54, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
+            };
+
+            validId.mockImplementation(() => {
+                return true
+            });
+            
+            dbFind.mockImplementation(() => {
+                return updatedWallet;
+            });
+
+            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
+                callback(null, updatedWallet);
+            });
+
+            return request(app).put("/api/v1/wallet/61c5c8475a8d4de2b1939301/as").set("Authorization", `Bearer ` + adminToken).send(wallet)
+                .then((response) => {
+                    expect(response.statusCode).toBe(400);
+                });
+        })
+
+        it('Should update a wallet if everything is fine', () => {
+            var updatedWallet = {
+                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.54, "lastTransactions": [12.47], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
+            };
+
+            validId.mockImplementation(() => {
+                return true
+            });
+            
+            dbFind.mockImplementation(() => {
+                return updatedWallet;
+            });
+
+            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
+                callback(null, updatedWallet);
+            });
+
+            return request(app).put("/api/v1/wallet/61c5c8475a8d4de2b1939301/1.35").set("Authorization", `Bearer ` + adminToken).send(wallet)
+                .then((response) => {
+                    expect(response.statusCode).toBe(404);
+                });
+        })
+    })*/
 })
