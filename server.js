@@ -2,9 +2,9 @@ var express = require('express');
 var ObjectId = require('mongoose').Types.ObjectId;
 var bodyParser = require('body-parser');
 var Wallet = require('./models/walletModel.js')
-var { sendMessageCreatedWallet, sendMessageUpdatedWallet, sendMessageDeletedWallet } = require('./pubsubMessages')
+var pubsubMessage = require('./pubsubMessages')
 var { authorizedAdmin, authorizedClient } = require('./middlewares/authorized-roles')
-const { pubsub } = require("./pubsub");
+const { pubsub, publishPubSubMessage } = require("./pubsub");
 var cors = require('cors')
 
 var BASE_API_PATH = "/api/v1";
@@ -16,22 +16,22 @@ app.use(cors())
 
 //Crear Wallet
 async function createWallet(user, fund, lastTransactions, deleted, createdAt, updatedAt) {
-    var wallet = new Wallet({user: user, fund: fund, lastTransactions: lastTransactions, deleted: deleted, createdAt: createdAt, updatedAt: updatedAt});
+    var wallet = new Wallet({ user: user, fund: fund, lastTransactions: lastTransactions, deleted: deleted, createdAt: createdAt, updatedAt: updatedAt });
     await wallet.save();
 
-    sendMessageCreatedWallet(wallet);
+    pubsubMessage.sendMessageCreatedWallet(wallet);
 
     return wallet;
 }
 
-app.post(BASE_API_PATH + "/wallet", async (req, res) => {
-    try{
+app.post(BASE_API_PATH + "/wallet", authorizedAdmin, async (req, res) => {
+    try {
         var wallet = createWallet(req.body.user, req.body.fund, req.body.lastTransactions, req.body.deleted, req.body.createdAt, req.body.updatedAt);
 
-        res.setHeader('Location', '/wallet/'+wallet._id);
+        res.setHeader('Location', '/wallet/' + wallet._id);
 
         return res.status(201).json(wallet);
-    } catch(e){
+    } catch (e) {
         return res.status(400).json(e);
     }
 }
@@ -39,8 +39,8 @@ app.post(BASE_API_PATH + "/wallet", async (req, res) => {
 
 //Listar Wallets
 app.get(BASE_API_PATH + "/wallet", authorizedAdmin, (req, res) => {
-    let limitatt = (req.query["limit"] != null && !Number.isNaN(req.query["limit"]) ) ? req.query["limit"] : 0;
-    let offset = (req.query["offset"] != null && !Number.isNaN(req.query["offset"]) ) ? req.query["offset"] : 0;
+    let limitatt = (req.query["limit"] != null && !Number.isNaN(req.query["limit"])) ? req.query["limit"] : 0;
+    let offset = (req.query["offset"] != null && !Number.isNaN(req.query["offset"])) ? req.query["offset"] : 0;
     let sortatt = (req.query["sort"] != null) ? req.query["sort"] : null;
     let order = (req.query["order"] != null) ? req.query["order"] : 1;
     let filters = req.query;
@@ -49,7 +49,7 @@ app.get(BASE_API_PATH + "/wallet", authorizedAdmin, (req, res) => {
             delete filters[x];
         }
     });
-    Wallet.find(filters, null, { sort: { [sortatt]: order, _id: 1 }, limit: limitatt, skip: offset*limitatt }, function (err, wallet) {
+    Wallet.find(filters, null, { sort: { [sortatt]: order, _id: 1 }, limit: limitatt, skip: offset * limitatt }, function (err, wallet) {
         if (err) return res.status(500).json(err);
         return res.status(200).json(wallet);
     });
@@ -58,61 +58,58 @@ app.get(BASE_API_PATH + "/wallet", authorizedAdmin, (req, res) => {
 
 // Modificar Wallet
 app.put(BASE_API_PATH + "/wallet/:id", authorizedAdmin, async (req, res) => {
-    try{
-        var filter = { _id: req.params.id };
-        Wallet.findOneAndUpdate(filter, req.body, function(err, doc) {
-            if(!doc){
-                return res.status(400).json("A wallet with that id could not be found.");
-            }
-        });
-        var wallet = await Wallet.findOne(filter);
-        if(wallet){
-            sendMessageUpdatedWallet(wallet);
-            return res.status(200).json(wallet);
-        }else{
+    if (!ObjectId.isValid(req.params.id)) {
+        return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
+    }
+    var filter = { _id: req.params.id };
+    Wallet.findOneAndUpdate(filter, req.body, function (err, doc) {
+        if (!doc) {
             return res.status(404).json("A wallet with that id could not be found.");
         }
-    }catch(e){
-        return res.status(500).json(e);
+    });
+    var wallet = await Wallet.findOne(filter);
+    if (wallet) {
+        pubsubMessage.sendMessageUpdatedWallet(wallet);
+        return res.status(200).json(wallet);
+    } else {
+        return res.status(404).json("A wallet with that id could not be found.");
     }
 });
 
 //Obtener un Wallet
-app.get(BASE_API_PATH + "/wallet/:userId", authorizedClient, (req, res) => {
-    if(req.id != req.params.userId) {
-        return res.status(400).json("Unauthorized");
-    }
-
-    if(!ObjectId.isValid(req.params.userId)){
+app.get(BASE_API_PATH + "/wallet/:id", authorizedClient, (req, res) => {   
+    if (!ObjectId.isValid(req.params.id)) {
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
 
-    var filter = { user: req.params.userId };
-    Wallet.findOne(filter,function (err, wallet) {
-        if (err){
+    var filter = { _id: req.params.id };
+    Wallet.findOne(filter, function (err, wallet) {
+        if (err) {
+
             return res.status(500).json(err);
-        }else if(wallet){
+        } else if (wallet) {
             return res.status(200).json(wallet);
-        }else{
+        } else {
             return res.status(404).json("A wallet with that id could not be found.");
         }
     });
 });
 
 // Borrar Wallet
+
 app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin, (req, res) => {
     if(!ObjectId.isValid(req.params.id)){
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
 
-    Wallet.findByIdAndDelete(req.params.id,function (err, wallet) {
-        if (err){
-             return res.status(500).json(err);
-            }
-        else if(wallet){
-            sendMessageDeletedWallet(wallet);
+    Wallet.findByIdAndDelete(req.params.id, function (err, wallet) {
+        if (err) {
+            return res.status(500).json(err);
+        }
+        else if (wallet) {
+            pubsubMessage.sendMessageDeletedWallet(wallet);
             return res.status(200).json();
-        }else{
+        } else {
             return res.status(404).json("A wallet with that id could not be found.");
         }
     });
@@ -120,35 +117,31 @@ app.delete(BASE_API_PATH + "/wallet/:id", authorizedAdmin, (req, res) => {
 
 // Modificar Wallet
 app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient, (req, res) => {
-    if(req.id != req.params.id) {
-        return res.status(400).json("Unauthorized");
-    }
-
     if (!req.params.fund.match(/\d+\.\d+/)) {
         return res.status(400).json("Invalid fund format.");
     } else {
         var filter = { user: req.params.id };
         Wallet.findOne(filter, async function (err, wallet) {
-            if (err){
+            if (err) {
                 return res.status(500).json(err);
-            }else if(wallet){
-                try{
-                    Wallet.findOneAndUpdate(filter, {fund: wallet.fund + Number(req.params.fund)}, function(err, doc) {
-                        if(!doc){
+            } else if (wallet) {
+                try {
+                    Wallet.findOneAndUpdate(filter, { fund: wallet.fund + Number(req.params.fund) }, function (err, doc) {
+                        if (!doc) {
                             return res.status(400).json("A wallet with that id could not be found.");
                         }
                     });
                     var wallet = await Wallet.findOne(filter);
-                    if(wallet){
-                        sendMessageUpdatedWallet(wallet);
+                    if (wallet) {
+                        pubsubMessage.sendMessageUpdatedWallet(wallet);
                         return res.status(200).json(wallet);
-                    }else{
+                    } else {
                         return res.status(404).json("A wallet with that id could not be found.");
                     }
-                }catch(e){
+                } catch (e) {
                     return res.status(500).json(e);
                 }
-            }else{
+            } else {
                 return res.status(404).json("A wallet with that id could not be found.");
             }
         });
@@ -158,25 +151,26 @@ app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient, (req, res) => {
 function addAmountToUserWallet(userId, amount) {
     var filter = { user: userId };
     Wallet.findOne(filter, async function (err, wallet) {
-        if (err){
+        if (err) {
             console.log("DB error.");
-        }else if(wallet){
-            try{
-                Wallet.findOneAndUpdate(filter, {fund: wallet.fund + amount}, function(err, doc) {
-                    if(!doc){
+        } else if (wallet) {
+            try {
+                var today = new Date().toLocaleDateString();
+                Wallet.findOneAndUpdate(filter, { fund: wallet.fund + amount, updatedAt: today }, function (err, doc) {
+                    if (!doc) {
                         console.log("A wallet with that id could not be found.");
                     }
                 });
                 var wallet = await Wallet.findOne(filter);
-                if(wallet){
-                    sendMessageUpdatedWallet(wallet);
-                }else{
+                if (wallet) {
+                    pubsubMessage.sendMessageUpdatedWallet(wallet);
+                } else {
                     console.log("A wallet with that id could not be found.");
                 }
-            }catch(e){
+            } catch (e) {
                 console.log("A wallet with that id could not be found.");
             }
-        }else{
+        } else {
             console.log("A wallet with that id could not be found.");
         }
     });
@@ -186,14 +180,15 @@ function addAmountToUserWallet(userId, amount) {
 // Pub/Sub, mensaje = una publicacion con datos, pero sin topic
 
 pubsub.subscription('wallet-created-user').on('message', message => {
-    createWallet(message.id, 0, [], false, new Date().toISOString(), new Date().toISOString())
+    var today = new Date().toLocaleDateString()
+    createWallet(message.id, 0, [], false, today, today)
     message.ack()
 });
 
 pubsub.subscription('wallet-deleted-user').on('message', message => {
     Wallet.findOneAndDelete({ user: message.id }, function (err, wallet) {
-        if(wallet){
-            sendMessageDeletedWallet(wallet);
+        if (wallet) {
+            pubsubMessage.sendMessageDeletedWallet(wallet);
         }
     });
 
