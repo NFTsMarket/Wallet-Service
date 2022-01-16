@@ -149,7 +149,7 @@ paths:
   
   /wallet/{id}/{fund}:
     put:
-      description: Delete a single wallet.
+      description: Add fund to a single wallet..
       parameters:
         - in: path
           name: id
