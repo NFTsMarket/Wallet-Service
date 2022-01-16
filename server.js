@@ -24,7 +24,7 @@ async function createWallet(user, fund, lastTransactions, deleted, createdAt, up
     return wallet;
 }
 
-app.post(BASE_API_PATH + "/wallet", async (req, res) => {
+app.post(BASE_API_PATH + "/wallet", authorizedAdmin, async (req, res) => {
     try{
         var wallet = createWallet(req.body.user, req.body.fund, req.body.lastTransactions, req.body.deleted, req.body.createdAt, req.body.updatedAt);
 
@@ -156,13 +156,14 @@ app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient, (req, res) => {
 });
 
 function addAmountToUserWallet(userId, amount) {
+    console.log("USER ID", userId);
     var filter = { user: userId };
     Wallet.findOne(filter, async function (err, wallet) {
         if (err){
             console.log("DB error.");
         }else if(wallet){
             try{
-                Wallet.findOneAndUpdate(filter, {fund: wallet.fund + amount}, function(err, doc) {
+                Wallet.findOneAndUpdate(filter, {fund: wallet.fund + amount, lastTransactions: [amount, ...wallet.lastTransactions]}, function(err, doc) {
                     if(!doc){
                         console.log("A wallet with that id could not be found.");
                     }
@@ -185,13 +186,21 @@ function addAmountToUserWallet(userId, amount) {
 
 // Pub/Sub, mensaje = una publicacion con datos, pero sin topic
 
-pubsub.subscription('wallet-created-user').on('message', message => {
-    createWallet(message.id, 0, [], false, new Date().toISOString(), new Date().toISOString())
+// Para probarlo:
+// Crear un usuario y comprobar que se le crea una wallet
+pubsub.subscription('wallet2-created-user').on('message', message => {
+    const user = JSON.parse(message.data.toString());
+    console.log("MENSAJE" ,user);
+    createWallet(user.id, 0, [], false, new Date().toISOString(), new Date().toISOString())
     message.ack()
 });
 
-pubsub.subscription('wallet-deleted-user').on('message', message => {
-    Wallet.findOneAndDelete({ user: message.id }, function (err, wallet) {
+// Para probarlo:
+// Borrar un usuario y comprobar que se le borra la wallet
+pubsub.subscription('wallet2-deleted-user').on('message', message => {
+    const user = JSON.parse(message.data.toString());
+    console.log("MENSAJE DELETE" ,user);
+    Wallet.findOneAndDelete({ user: user.id }, function (err, wallet) {
         if(wallet){
             sendMessageDeletedWallet(wallet);
         }
@@ -200,12 +209,30 @@ pubsub.subscription('wallet-deleted-user').on('message', message => {
     message.ack()
 });
 
+
+// Para probarlo:
+// Realizar una compra y comprobar que le suma a una cartera la cantidad y a la otra se le resta y que se añade la transacción a la lista
 pubsub.subscription('wallet-created-purchase').on('message', message => {
-    let buyerId = message.buyerId;
-    let sellerId = message.sellerId;
-    let cost = message.amount;
-    addAmountToUserWallet(sellerId, cost);
+    const user = JSON.parse(message.data.toString());
+    let buyerId = user.buyerId;
+    let cost = user.amount;
     addAmountToUserWallet(buyerId, -cost);
+    message.ack()
+});
+
+pubsub.subscription('wallet-updated-purchase').on('message', message => {
+    const user = JSON.parse(message.data.toString());
+    let sellerId = user.sellerId;
+    let cost = user.amount;
+    addAmountToUserWallet(sellerId, cost);
+    message.ack()
+});
+
+pubsub.subscription('wallet-deleted-purchase').on('message', message => {
+    const user = JSON.parse(message.data.toString());
+    let buyerId = user.buyerId;
+    let cost = user.amount;
+    addAmountToUserWallet(buyerId, cost);
     message.ack()
 });
 
