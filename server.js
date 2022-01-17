@@ -71,7 +71,7 @@ app.put(BASE_API_PATH + "/wallet/:id", authorizedClient, async (req, res) => {
     if (!ObjectId.isValid(req.params.id)) {
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
-    var filter = { _id: req.params.id };
+    var filter = { user: req.params.id };
     Wallet.findOneAndUpdate(filter, req.body, function (err, doc) {
         if (!doc) {
             return res.status(404).json("A wallet with that id could not be found.");
@@ -92,7 +92,7 @@ app.get(BASE_API_PATH + "/wallet/:id", authorizedClient, (req, res) => {
         return res.status(400).json("A wallet with that id could not be found, since it's not a valid id.");
     }
 
-    var filter = { _id: req.params.id };
+    var filter = { user: req.params.id };
     Wallet.findOne(filter, function (err, wallet) {
         if (err) {
 
