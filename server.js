@@ -136,7 +136,7 @@ app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient, (req, res) => {
                 return res.status(500).json(err);
             } else if (wallet) {
                 try {
-                    Wallet.findOneAndUpdate(filter, { fund: wallet.fund + Number(req.params.fund) }, function (err, doc) {
+                    Wallet.findOneAndUpdate(filter, { fund: wallet.fund + Number(req.params.fund), lastTransactions: wallet.lastTransactions.push(amount) }, function (err, doc) {
                         if (!doc) {
                             return res.status(400).json("A wallet with that id could not be found.");
                         }
@@ -167,7 +167,7 @@ function addAmountToUserWallet(userId, amount) {
         } else if (wallet) {
             try {
                 var today = new Date().toLocaleDateString();
-                Wallet.findOneAndUpdate(filter, { fund: wallet.fund + amount, lastTransactions: wallet.lastTransactions.push(amount), updatedAt: today }, function (err, doc) {
+                Wallet.findOneAndUpdate(filter, { fund: wallet.fund + amount, updatedAt: today }, function (err, doc) {
                     if (!doc) {
                         console.log("A wallet with that id could not be found.");
                     }
