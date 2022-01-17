@@ -167,7 +167,7 @@ function addAmountToUserWallet(userId, amount) {
         } else if (wallet) {
             try {
                 var today = new Date().toLocaleDateString();
-                Wallet.findOneAndUpdate(filter, { fund: wallet.fund + amount, updatedAt: today }, function (err, doc) {
+                Wallet.findOneAndUpdate(filter, { fund: wallet.fund + amount, lastTransactions: wallet.lastTransactions.push(amount), updatedAt: today }, function (err, doc) {
                     if (!doc) {
                         console.log("A wallet with that id could not be found.");
                     }
