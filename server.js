@@ -159,6 +159,7 @@ app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient, (req, res) => {
 });
 
 function addAmountToUserWallet(userId, amount) {
+    console.log("USER ID", userId);
     var filter = { user: userId };
     Wallet.findOne(filter, async function (err, wallet) {
         if (err) {
@@ -191,6 +192,7 @@ function addAmountToUserWallet(userId, amount) {
 
 // Para probarlo:
 // Crear un usuario y comprobar que se le crea una wallet
+
 pubsub.subscription('wallet-created-user').on('message', message => {
     const user = JSON.parse(message.data.toString());
     console.log("MENSAJE" ,user);
