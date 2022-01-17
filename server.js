@@ -14,6 +14,16 @@ app.use(bodyParser.json());
 
 app.use(cors())
 
+
+app.get("/", (req, res) => {
+    res.redirect("https://app.swaggerhub.com/apis-docs/D-RHYM/Wallet-Service/1.0");
+});
+
+app.get(BASE_API_PATH + "/", (req, res) => {
+    res.redirect("https://app.swaggerhub.com/apis-docs/D-RHYM/Wallet-Service/1.0");
+});
+
+
 //Crear Wallet
 async function createWallet(user, fund, lastTransactions, deleted, createdAt, updatedAt) {
     var wallet = new Wallet({ user: user, fund: fund, lastTransactions: lastTransactions, deleted: deleted, createdAt: createdAt, updatedAt: updatedAt });
