@@ -10,24 +10,55 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    strategy:
+      matrix:
+        node-version: [12.x, 14.x, 16.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+    services:
+      mongo:
+        image: mongo
+        options: >-
+          --health-cmd mongo
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
-      
-      - name: Okteto Login
-        uses: okteto/login@latest
-        with:
-          token: ${{ secrets.OKTETO_TOKEN }}
-      - name: Okteto Pipeline
-        uses: okteto/pipeline@latest
-        with:
-          # The name of the pipeline
-          name: wallet-service
+    - uses: actions/checkout@v2
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v2
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - name: Make envfile
+      uses: iamsauravsharma/create-dotenv@v1.2.0
+      env:
+        SECRET_KEY: ${{ secrets.SECRET_KEY}}
+        GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID}}
+        GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL}}
+        GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY}}
+    - run: npm install -g npm
+    - run: npm ci
+    - run: npm run build --if-present
+    - run: npm test
+      env:
+        MONGO_URL: "mongodb://localhost/test"
+  deploy:
+   needs: build
+   runs-on: ubuntu-latest
+   steps:
+    - name: Okteto Login
+      uses: okteto/login@latest
+      with:
+        token: ${{ secrets.OKTETO_TOKEN }}
+    - name: Okteto Pipeline
+      uses: okteto/pipeline@latest
+      with:    # The name of the pipeline
+        name: wallet-service
           # If present, the namespace scope for this action. If not specified, it will use the current context
-          namespace: fis-wallet-d-rhym
+        namespace: fis-wallet-d-rhym

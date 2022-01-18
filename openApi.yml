@@ -30,12 +30,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/forbidden"
                 
     post:
       description: Returns a list with all the wallets in the database.
@@ -64,12 +58,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/forbidden"
+                
   /wallet/{id}:
     get:
       description: Returns a single wallet.
@@ -150,12 +139,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/forbidden"
+                
     delete:
       description: Delete a single wallet.
       parameters:
@@ -195,12 +179,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/forbidden"
+        
   
   /wallet/{id}/{fund}:
     put:
@@ -266,9 +245,6 @@ components:
     unauthorized:
       type: string
       description: The user is not logged
-    forbidden:
-      type: string
-      description: Administrator privilege required
     notCreate:
       type: string
       description: Could not create

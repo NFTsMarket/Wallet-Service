@@ -43,15 +43,15 @@ describe("Wallet service API", () => {
             })
         })
 
-        it("Should return 403 Forbidden", () => {
+        it("Should return 401 Unauthorized", () => {
 
-            return request(app).get("/api/v1/wallet").set("Authorization", `Bearer ` + clientToken).then((response) => {
-                expect(response.statusCode).toBe(403);
+            return request(app).get("/api/v1/wallet").then((response) => {
+                expect(response.statusCode).toBe(401);
             })
         })
     })
 
-    
+
     describe("GET /wallet/:id", () => {
 
         var dbFind;
@@ -113,6 +113,12 @@ describe("Wallet service API", () => {
                 expect(response.body).toBe("A wallet with that id could not be found.");
             })
         })
+        it("Should return 401 Unauthorized", () => {
+
+            return request(app).get("/api/v1/wallet/61c5c8475a8d4de2b1939302").then((response) => {
+                expect(response.statusCode).toBe(401);
+            })
+        })
     })
     describe("POST /wallet/", () => {
         let wallet;
@@ -130,110 +136,14 @@ describe("Wallet service API", () => {
                 expect(response.statusCode).toBe(201);
             });
         })
-        it('Should return 403 Forbidden', () => {
+        it('Should return 401 Unauthorized', () => {
             dbInsert.mockImplementation((c, callback) => {
                 callback(false);
             });
 
-            return request(app).post('/api/v1/wallet').set("Authorization", `Bearer ` + clientToken).send(wallet).then((response) => {
-                expect(response.statusCode).toBe(403);
+            return request(app).post('/api/v1/wallet').send(wallet).then((response) => {
+                expect(response.statusCode).toBe(401);
             });
-        })
-    })
-    
-    describe("PUT /wallet/:id", () => {
-        var wallet;
-        var dbInsert;
-        var validId;
-        var dbFind;
-        let pubsubPublishMessage;
-        beforeEach(() => {
-            wallet = { _id: "61c5c8475a8d4de2b1939301", user: "joe", fund: 12.63, lastTransactions: [], deleted: false, createdAt: "06/23/2021", updatedAt: "07/23/2021" };
-            validId = jest.spyOn(ObjectId, "isValid");
-            dbFind = jest.spyOn(Wallet, "findOne");
-
-            dbFindOneAndUpdate = jest.spyOn(Wallet, "findOneAndUpdate");
-            dbFind = jest.spyOn(Wallet, "findOne");
-
-
-            pubsubPublishMessage = jest.spyOn(pubsubMessage, 'sendMessageUpdatedWallet');
-            pubsubPublishMessage.mockImplementation((message) => { Promise.resolve(); });
-
-        })
-
-        afterEach(() => {
-            pubsubPublishMessage.mockClear();
-            dbFind.mockReset();
-        });
-        it('Should update a wallet if everything is fine', () => {
-            var updatedWallet = {
-                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.63, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
-            };
-
-            validId.mockImplementation(() => {
-                return true
-            });
-
-            dbFind.mockImplementation(() => {
-                return updatedWallet;
-            });
-
-            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
-                return (null, updatedWallet);
-            });
-
-            return request(app).put("/api/v1/wallet/61c5c8475a8d4de2b1939301").set("Authorization", `Bearer ` + adminToken).send(wallet)
-                .then((response) => {
-                    expect(response.statusCode).toBe(200);
-                });
-
-
-        })
-        it('Should return 400 invalid id', () => {
-            var updatedWallet = {
-                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.63, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
-            };
-
-            validId.mockImplementation(() => {
-                return false
-            });
-            
-            dbFind.mockImplementation(() => {
-                return updatedWallet;
-            });
-
-            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
-                callback(null, null);
-            });
-
-            return request(app).put("/api/v1/wallet/a").set("Authorization", `Bearer ` + adminToken).send(wallet)
-                .then((response) => {
-                    expect(response.statusCode).toBe(400);
-                });
-
-
-        })
-        it('Should return 404 wallet not found', () => {
-            var updatedWallet = {
-                "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.63, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
-            };
-
-            validId.mockImplementation(() => {
-                return true
-            });
-            
-            dbFind.mockImplementation(() => {
-                return null;
-            });
-
-            dbFindOneAndUpdate.mockImplementation((filter, req, callback) => {
-                callback(null, updatedWallet);
-            });
-
-            return request(app).put("/api/v1/wallet/a").set("Authorization", `Bearer ` + adminToken).send(wallet)
-                .then((response) => {
-                    expect(response.statusCode).toBe(404);
-                });
         })
     })
 
@@ -293,7 +203,7 @@ describe("Wallet service API", () => {
             validId.mockImplementation(() => {
                 return false
             });
-            
+
             dbFind.mockImplementation(() => {
                 return updatedWallet;
             });
@@ -317,7 +227,7 @@ describe("Wallet service API", () => {
             validId.mockImplementation(() => {
                 return true
             });
-            
+
             dbFind.mockImplementation(() => {
                 return null;
             });
@@ -331,7 +241,7 @@ describe("Wallet service API", () => {
                     expect(response.statusCode).toBe(404);
                 });
         })
-        it('Should return 403 Forbidden', () => {
+        it('Should return 401 Unauthorized', () => {
             var updatedWallet = {
                 "_id": "61c5c8475a8d4de2b1939301", "user": "gideon", "fund": 12.63, "lastTransactions": [], "deleted": false, "createdAt": "06/23/2021", "updatedAt": "07/23/2021", "_v0": "0"
             };
@@ -339,7 +249,7 @@ describe("Wallet service API", () => {
             validId.mockImplementation(() => {
                 return true
             });
-            
+
             dbFind.mockImplementation(() => {
                 return null;
             });
@@ -348,9 +258,9 @@ describe("Wallet service API", () => {
                 callback(null, updatedWallet);
             });
 
-            return request(app).put("/api/v1/wallet/a").set("Authorization", `Bearer ` + clientToken).send(wallet)
+            return request(app).put("/api/v1/wallet/a").send(wallet)
                 .then((response) => {
-                    expect(response.statusCode).toBe(403);
+                    expect(response.statusCode).toBe(401);
                 });
         })
     })
@@ -371,7 +281,7 @@ describe("Wallet service API", () => {
         afterEach(() => {
             pubsubPublishMessage.mockClear();
         });
-        it('Should return 403 Forbidden', () => {
+        it('Should return 401 Forbidden', () => {
             validId.mockImplementation(() => {
                 return true
             });
@@ -380,12 +290,12 @@ describe("Wallet service API", () => {
                 return (null, true);
             });
 
-            return request(app).delete("/api/v1/wallet/61c5c8475a8d4de2b1939301").set("Authorization", `Bearer ` + clientToken)
+            return request(app).delete("/api/v1/wallet/61c5c8475a8d4de2b1939301")
                 .then((response) => {
-                    expect(response.statusCode).toBe(403);
+                    expect(response.statusCode).toBe(401);
                 });
         })
-        
+
         it('Should delete a wallet if everything is fine', () => {
             validId.mockImplementation(() => {
                 return true
@@ -395,16 +305,16 @@ describe("Wallet service API", () => {
                 return (null, true);
             });
 
-            return request(app).delete("/api/v1/wallet/61c5c8475a8d4de2b1939301").set("Authorization", `Bearer ` + clientToken)
+            return request(app).delete("/api/v1/wallet/61c5c8475a8d4de2b1939301")
                 .then((response) => {
-                    expect(response.statusCode).toBe(403);
+                    expect(response.statusCode).toBe(401);
                 });
         })
         it('Should return 400 invalid id', () => {
             validId.mockImplementation(() => {
                 return false
             });
-            
+
 
             return request(app).delete("/api/v1/wallet/61c5c8475a8d4de2b1939301").set("Authorization", `Bearer ` + adminToken)
                 .then((response) => {
@@ -417,7 +327,7 @@ describe("Wallet service API", () => {
             validId.mockImplementation(() => {
                 return true
             });
-            
+
             return request(app).put("/api/v1/wallet/a").set("Authorization", `Bearer ` + adminToken)
                 .then((response) => {
                     expect(response.statusCode).toBe(404);
