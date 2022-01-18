@@ -137,7 +137,7 @@ app.put(BASE_API_PATH + "/wallet/:id/:fund", authorizedClient, (req, res) => {
             } else if (wallet) {
                 try {
                     var temporalTransactions = wallet.lastTransactions;
-                    temporalTransactions.push(req.params.fund);
+                    temporalTransactions.push(Number(req.params.fund));
                     Wallet.findOneAndUpdate(filter, { fund: wallet.fund + Number(req.params.fund), lastTransactions: temporalTransactions }, function (err, doc) {
                         if (!doc) {
                             return res.status(400).json("A wallet with that id could not be found.");
